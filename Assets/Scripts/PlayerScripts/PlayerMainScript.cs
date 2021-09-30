@@ -18,6 +18,16 @@ public class PlayerMainScript : MonoBehaviour
     public delegate void _PlayerKilledEvent();
     public event _PlayerKilledEvent PlayerKilledEvent;
 
+    public static PlayerMainScript Instance { private set; get; }
+
+    private void Awake()
+    {
+        if (PlayerMainScript.Instance == null)
+            Instance = this;
+        else
+            Destroy(this);
+    }
+
     void Start()
     {
         weapon = GetComponent<PlayerWeaponBaseClass>();

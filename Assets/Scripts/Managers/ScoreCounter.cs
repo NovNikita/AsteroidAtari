@@ -12,26 +12,23 @@ public class ScoreCounter : MonoBehaviour
     [SerializeField]
     private TextMeshProUGUI scoreText;
 
-    public static ScoreCounter instance;
+    public static ScoreCounter Instance { private set; get;  }
 
     private int score = 0;
 
+    [SerializeField] private ScoreValueStruct[] scoreValue; 
 
-    //score values assigned depending on tag of destroyed object 
-
-    private Dictionary<string, int> scoreValues = new Dictionary<string, int> 
-    { 
-        { "UFO", 200 }, 
-        { "Asteroid_Small", 20 },
-        { "Asteroid_Medium", 50 },
-        { "Asteroid_Large", 100 }
-    };
-
-
-    private void Start()
+    [System.Serializable]
+    private struct ScoreValueStruct
     {
-        if (ScoreCounter.instance == null)
-            ScoreCounter.instance = this;
+        public string killedObjectTag;
+        public int scoreValue;
+    }
+
+    private void Awake()
+    {
+        if (SpawnManagerAsteroids.Instance == null)
+            Instance = this;
         else
             Destroy(this);
     }
@@ -43,13 +40,21 @@ public class ScoreCounter : MonoBehaviour
         scoreText.text = score.ToString();
     }
 
-    public void AddScore(string objectDestroyed)
+    public void AddScore(string objectDestroyedTag)
     {
-        if (scoreValues.ContainsKey(objectDestroyed))
-            score += scoreValues[objectDestroyed];
+        int i = 0;
+        while (i < scoreValue.Length)
+        {
+            if (scoreValue[i].killedObjectTag == objectDestroyedTag)
+            {
+                score += scoreValue[i].scoreValue;
+                break;
+            }
+            i++;
+        }
 
-        else 
-            Debug.Log("Object with tag '" + objectDestroyed + "' is not represented in ScoreValues dictionaty");
+        if (i == scoreValue.Length)
+            Debug.Log("Destroyed Object's Tag does not represented in ScoreValues list");
 
         scoreText.text = score.ToString();
     }

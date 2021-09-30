@@ -71,7 +71,8 @@ public class MainMenuScript : MonoBehaviour
         continueButton.SetActive(true);
         mainMenuGroup.SetActive(false);
 
-        ScoreCounter.instance.ResetScore();
+        ScoreCounter.Instance.ResetScore();
+        PoolManager.ResetAllPools();
         spawnManagerPlayer.StartNewGame();
         spawnManagerAsteroids.StartNewGame();
         spawnManagerUFO.StartNewGame();

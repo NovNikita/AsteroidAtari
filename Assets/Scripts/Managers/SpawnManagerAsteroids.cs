@@ -12,14 +12,9 @@ public class SpawnManagerAsteroids : MonoBehaviour
     //pause before next wave
     private float timeBetweenWaves = 2;
 
-    //value for initial size of asteroid pool, there would be generated x2 medium and x4 small ones
-    private int amountOfLargeAsteroidsInStartingPool = 5;
-
     private int largeAsteroidsToSpawn, asteroidsCount = 0;
 
-    private List<GameObject> smallAsteroidsPool;
-    private List<GameObject> mediumAsteroidsPool;
-    private List<GameObject> largeAsteroidsPool;
+    public static SpawnManagerAsteroids Instance { private set; get; }
 
     [SerializeField]
     private int StartingAmountOfAsteroids = 2;
@@ -36,12 +31,16 @@ public class SpawnManagerAsteroids : MonoBehaviour
     [SerializeField] 
     private GameObject largeAsteroidPf;
 
-
+    private void Awake()
+    {
+        if (SpawnManagerAsteroids.Instance == null)
+            Instance = this;
+        else
+            Destroy(this);
+    }
 
     void Start()
     {
-        InitializeAsteroidPools(amountOfLargeAsteroidsInStartingPool);
-
         //determine play area to spawn asteroids
         spawnXMax = Camera.main.ViewportToWorldPoint(Vector3.right).x;
         spawnXMin = Camera.main.ViewportToWorldPoint(Vector3.zero).x;
@@ -50,33 +49,11 @@ public class SpawnManagerAsteroids : MonoBehaviour
 
     }
 
-    private void InitializeAsteroidPools(int amountOfLargeAsteroidsInPool)
-    {
-        largeAsteroidsPool = ObjectPoolManager.InitializePool(largeAsteroidPf, amountOfLargeAsteroidsInPool);
-        mediumAsteroidsPool = ObjectPoolManager.InitializePool(mediumAsteroidPf, amountOfLargeAsteroidsInPool * 2);
-        smallAsteroidsPool = ObjectPoolManager.InitializePool(smallAsteroidPf, amountOfLargeAsteroidsInPool * 4);
-
-
-        //subscribing on asteroid destroyed events
-        for (int i = 0; i < amountOfLargeAsteroidsInPool; i++) largeAsteroidsPool[i].GetComponent<AsteroidController>().AsteroidDestroyed += OnAsteroidDestroyed;
-        for (int i = 0; i < amountOfLargeAsteroidsInPool * 2; i++) mediumAsteroidsPool[i].GetComponent<AsteroidController>().AsteroidDestroyed += OnAsteroidDestroyed;
-        for (int i = 0; i < amountOfLargeAsteroidsInPool * 4; i++) smallAsteroidsPool[i].GetComponent<AsteroidController>().AsteroidDestroyed += OnAsteroidDestroyed;
-    }
-
 
     //initialization for new game
     public void StartNewGame()
     {
         StopAllCoroutines();
-
-        foreach (GameObject asteroid in largeAsteroidsPool)
-            asteroid.SetActive(false);
-
-        foreach (GameObject asteroid in mediumAsteroidsPool)
-            asteroid.SetActive(false);
-
-        foreach (GameObject asteroid in smallAsteroidsPool)
-            asteroid.SetActive(false);
 
         asteroidsCount = 0;
 
@@ -92,60 +69,43 @@ public class SpawnManagerAsteroids : MonoBehaviour
 
             Vector2 randomPos = new Vector2(Random.Range(spawnXMin, spawnXMax), Random.Range(spawnYMin, spawnYMax));
 
-            while (CheckIfPlayerIsNear(randomPos, 3))
+            Vector2 playerToRandomPosVector = randomPos - (Vector2)PlayerMainScript.Instance.transform.position;
+            if (playerToRandomPosVector.magnitude < 3)
             {
-                randomPos = new Vector2(Random.Range(spawnXMin, spawnXMax), Random.Range(spawnYMin, spawnYMax));
+                playerToRandomPosVector.Normalize();
+                playerToRandomPosVector *= 3;
+                randomPos = (Vector2)PlayerMainScript.Instance.transform.position + playerToRandomPosVector;
             }
 
-            GameObject asteroidToSpawn = ObjectPoolManager.RetrieveFromPool(largeAsteroidsPool);
-
-            //Object pool returnes existing disabled asteroid if there is any, and creates and return new one if all occupied
-            //In second case we need to subscribe on AsteroidDestroyed event of new asteroid object
-            //-------------------------------------------------------------------------------------------
-            if (asteroidToSpawn.GetComponent<AsteroidController>().CheckIfAsteroidDestroyedEventIsNull())
-            {
-                asteroidToSpawn.GetComponent<AsteroidController>().AsteroidDestroyed += OnAsteroidDestroyed;
-            }
-            //-------------------------------------------------------------------------------------------
+            GameObject asteroidToSpawn = PoolManager.GetObject(largeAsteroidPf);
 
             Vector2 randomDirection = Random.insideUnitCircle.normalized;
             float randomSpeed = Random.Range(minAsteroidSpeed, maxAsteroidSpeed);
 
-            SpawnAsteroid(asteroidToSpawn, randomPos, randomDirection, randomSpeed);
+            SpawnAsteroid(asteroidToSpawn.GetComponent<AsteroidController>(), randomPos, randomDirection, randomSpeed);
        
         }
     }
 
 
 
-    private void SpawnAsteroid(GameObject asteroidToSpawn, Vector2 positionToSpawn, Vector2 movementDirection, float speed)
+    private void SpawnAsteroid(AsteroidController asteroidToSpawn, Vector2 positionToSpawn, Vector2 movementDirection, float speed)
     {
 
         asteroidToSpawn.transform.position = positionToSpawn;
-        asteroidToSpawn.GetComponent<AsteroidController>().SetMovementDirection(movementDirection);
-        asteroidToSpawn.GetComponent<AsteroidController>().SetSpeed(speed);
-        asteroidToSpawn.SetActive(true);
+        asteroidToSpawn.SetMovementDirection(movementDirection);
+        asteroidToSpawn.SetSpeed(speed);
+        asteroidToSpawn.gameObject.SetActive(true);
 
         asteroidsCount++;
     }
 
 
-    private bool CheckIfPlayerIsNear(Vector2 position, float radius)
-    {
-        Collider2D[] collidersInArea = Physics2D.OverlapCircleAll(position, radius);
-        foreach (Collider2D collider in collidersInArea)
-        {
-            if (collider.gameObject.tag == "Player")
-                return true;
-        }
-        return false;
-    }
-
 
     //Method is called by asteroids getting destroyed by projectile or impact
     //first parameter - reference to asteroid being destroyed to get coordinates to spawn new ones
     //second one - if new ones need to be spawn(false in case of impact)
-    private void OnAsteroidDestroyed(AsteroidController destroyedAsteroid, bool spawnSmallerOnes)
+    public void AsteroidDestroyed(AsteroidController destroyedAsteroid, bool spawnSmallerOnes)
     {
         asteroidsCount--;
 
@@ -159,14 +119,7 @@ public class SpawnManagerAsteroids : MonoBehaviour
             case "Asteroid_Medium":
                 if (spawnSmallerOnes)
                 {
-                    float randomSpeed = Random.Range(minAsteroidSpeed, maxAsteroidSpeed);
-
-                    //spawn two asteroid +-45 degrees relative to original asteroid movement direction
-                    GameObject asteroidToSpawn = ObjectPoolManager.RetrieveFromPool(smallAsteroidsPool);
-                    SpawnAsteroid(asteroidToSpawn, destroyedAsteroid.transform.position, Quaternion.Euler(0, 0, 45) * destroyedAsteroid.GetMovementDirection(), randomSpeed);
-
-                    asteroidToSpawn = ObjectPoolManager.RetrieveFromPool(smallAsteroidsPool);
-                    SpawnAsteroid(asteroidToSpawn, destroyedAsteroid.transform.position, Quaternion.Euler(0, 0, -45) * destroyedAsteroid.GetMovementDirection(), randomSpeed);
+                    SpawnSmallerAsteroids(destroyedAsteroid, smallAsteroidPf);
                 }
                 break;
 
@@ -174,14 +127,7 @@ public class SpawnManagerAsteroids : MonoBehaviour
             case "Asteroid_Large":
                 if (spawnSmallerOnes)
                 {
-                    float randomSpeed = Random.Range(minAsteroidSpeed, maxAsteroidSpeed);
-
-                    //spawn two asteroid +-45 degrees relative to original asteroid movement direction
-                    GameObject asteroidToSpawn = ObjectPoolManager.RetrieveFromPool(mediumAsteroidsPool);
-                    SpawnAsteroid(asteroidToSpawn, destroyedAsteroid.transform.position, Quaternion.Euler(0, 0, 45) * destroyedAsteroid.GetMovementDirection(), randomSpeed);
-                    
-                    asteroidToSpawn = ObjectPoolManager.RetrieveFromPool(mediumAsteroidsPool);
-                    SpawnAsteroid(asteroidToSpawn, destroyedAsteroid.transform.position, Quaternion.Euler(0, 0, -45) * destroyedAsteroid.GetMovementDirection(), randomSpeed);
+                    SpawnSmallerAsteroids(destroyedAsteroid, mediumAsteroidPf);
                 }
                 break;
 
@@ -201,6 +147,19 @@ public class SpawnManagerAsteroids : MonoBehaviour
         }
 
     }
+
+    //Method to spawn two asteroid +-45 degrees relative to original asteroid movement direction
+    private void SpawnSmallerAsteroids(AsteroidController destroyedAsteroid, GameObject asteroidPrefabToSpawn)
+    {
+        float randomSpeed = Random.Range(minAsteroidSpeed, maxAsteroidSpeed);
+
+        GameObject asteroidToSpawn = PoolManager.GetObject(asteroidPrefabToSpawn);
+        SpawnAsteroid(asteroidToSpawn.GetComponent<AsteroidController>(), destroyedAsteroid.transform.position, Quaternion.Euler(0, 0, 45) * destroyedAsteroid.GetMovementDirection(), randomSpeed);
+
+        asteroidToSpawn = PoolManager.GetObject(asteroidPrefabToSpawn);
+        SpawnAsteroid(asteroidToSpawn.GetComponent<AsteroidController>(), destroyedAsteroid.transform.position, Quaternion.Euler(0, 0, -45) * destroyedAsteroid.GetMovementDirection(), randomSpeed);
+    }
+
 
     IEnumerator  WaitToSpawnNewWave()
     {

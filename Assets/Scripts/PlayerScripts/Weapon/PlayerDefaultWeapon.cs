@@ -13,8 +13,6 @@ public class PlayerDefaultWeapon : PlayerWeaponBaseClass
 
     private AudioSource shootAudioSource;
 
-    private List<GameObject> projectilePool;
-
     private GameObject projectilePf;
 
 
@@ -23,8 +21,6 @@ public class PlayerDefaultWeapon : PlayerWeaponBaseClass
         projectilePf = Resources.Load("Prefabs/PlayerDefaultProjectile") as GameObject;
 
         shootAudioSource = transform.Find("ShootSound").GetComponent<AudioSource>();
-
-        projectilePool = ObjectPoolManager.InitializePool(projectilePf, 10);
     }
 
 
@@ -35,7 +31,7 @@ public class PlayerDefaultWeapon : PlayerWeaponBaseClass
         if (!cooldown && Time.timeScale != 0)
         {
 
-            GameObject projectile = ObjectPoolManager.RetrieveFromPool(projectilePool);
+            GameObject projectile = PoolManager.GetObject(projectilePf);
 
             projectile.transform.position = transform.position + (transform.rotation * new Vector3(0, projectileSpawnOffset, 0));
             projectile.transform.rotation = transform.rotation;

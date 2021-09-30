@@ -13,8 +13,6 @@ public class ShootAtPlayerScript : MonoBehaviour
 
     float projectileSpawnOffset = 0.15f;
 
-    private List<GameObject> projectilePool;
-
     private Transform player;
 
     private AudioSource shootSoundAS;
@@ -22,7 +20,8 @@ public class ShootAtPlayerScript : MonoBehaviour
     private void Start()
     {
         shootSoundAS = GetComponent<AudioSource>();
-        projectilePool = ObjectPoolManager.InitializePool(projectilePf, 5);
+
+        projectilePf = Resources.Load("Prefabs/ProjectileUFO") as GameObject;
     }
 
 
@@ -56,7 +55,7 @@ public class ShootAtPlayerScript : MonoBehaviour
         //---------------------------------------------------------
 
 
-        GameObject projectile = ObjectPoolManager.RetrieveFromPool(projectilePool);
+        GameObject projectile = PoolManager.GetObject(projectilePf);
 
         //determine rotation
         Vector3 dir = player.transform.position - transform.position;

@@ -10,7 +10,7 @@ public class ProjectilePlayer : ProjectileBaseClass
         if (collision.GetComponent<IDamageableByPlayer>()!=null)
         {
             collision.GetComponent<IDamageableByPlayer>().HitByPlayerProjectile();
-            ScoreCounter.instance.AddScore(collision.tag);
+            ScoreCounter.Instance.AddScore(collision.tag);
             gameObject.SetActive(false);
         }
     }

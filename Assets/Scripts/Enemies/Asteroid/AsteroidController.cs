@@ -7,9 +7,6 @@ public class AsteroidController : MonoBehaviour, IDamageableByPlayer, IDestroyab
     private float speed;
     private Vector3 movementDirection;
 
-    public delegate void _AsteroidDestroyed(AsteroidController destroyedAsteroid, bool spawnSmallerOnes);
-    public event _AsteroidDestroyed AsteroidDestroyed;
-
 
     private void Update()
     {
@@ -36,7 +33,7 @@ public class AsteroidController : MonoBehaviour, IDamageableByPlayer, IDestroyab
         if (gameObject.activeSelf)
         {
             GeneralSoundsScript.PlayExplosionSoundEffect();
-            AsteroidDestroyed?.Invoke(this, true);
+            SpawnManagerAsteroids.Instance.AsteroidDestroyed(this, true);
             gameObject.SetActive(false);
         }
     }
@@ -48,16 +45,9 @@ public class AsteroidController : MonoBehaviour, IDamageableByPlayer, IDestroyab
         if (gameObject.activeSelf)
         {
             GeneralSoundsScript.PlayExplosionSoundEffect();
-            AsteroidDestroyed?.Invoke(this, false);
+            SpawnManagerAsteroids.Instance.AsteroidDestroyed(this, false);
             gameObject.SetActive(false);
         }
     }
 
-    public bool CheckIfAsteroidDestroyedEventIsNull()
-    {
-        if (AsteroidDestroyed == null)
-            return true;
-        else
-            return false;
-    }
 }
